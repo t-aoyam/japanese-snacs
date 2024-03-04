@@ -1,181 +1,35 @@
 import os
-import xml.etree.ElementTree as ET
 import re
 import pykakasi
-import pandas as pd
 from scipy.spatial.distance import jensenshannon
 from scipy.stats import pearsonr
 import matplotlib
 from matplotlib import pyplot as plt
-import seaborn as sns
 import numpy as np
 from tqdm import tqdm
 import json
 from numpy import dot
 from numpy.linalg import norm
 import torch
+from embedding_distance import get_target_list
 kks = pykakasi.kakasi()
 
-capitalize_ss_fp = os.path.join("data", "supersenses_capitalization.tab")
-with open(capitalize_ss_fp) as f:
-    capitalize_ss = {lower:cap for lower, cap in [item.strip().split('\t') for item in f.readlines()]}
+DATA_DIR = os.path.join('..', 'data')
+EMBEDDINGS_DIR = os.path.join(DATA_DIR, 'embeddings')
 
-# get English distribution from English Little Prince
-"""
-fp = os.path.join('data', 'prince_en_without_1_4_5.conllulex')
-p_en = dict()
-with open(fp) as f:
-    for line in f.readlines():
-        line = line.strip()
-        if line.startswith("#") or len(line) == 0:
-            continue
-        line = line.split("\t")
-        lemma = line[2]
-        sr = line[13]
-        f = line[14]
-        lexcat = line[18]
-        if lexcat == "_"\
-            or len(lexcat.split('-')) < 2\
-                or lexcat.split('-')[1] != 'P':
-            continue
-        if lemma not in p_en:
-            p_en[lemma] = {'sr': {ss: 0 for ss in sorted(list(capitalize_ss.values()))},
-                           'f': {ss: 0 for ss in sorted(list(capitalize_ss.values()))}}
-        sr = sr.split('.')[1]
-        f = f.split('.')[1]
-        p_en[lemma]['sr'][sr] += 1
-        p_en[lemma]['f'][f] += 1
-"""
-def _add_p(dct, p, sr, f):
-    if p not in dct:
-        dct[p] = {'sr': {ss: 0 for ss in sorted(list(capitalize_ss.values()))},
-                       'f': {ss: 0 for ss in sorted(list(capitalize_ss.values()))}}
-    dct[p]['sr'][sr] += 1
-    dct[p]['f'][f] += 1
-    return dct
-
-fp = os.path.join('data', 'prince_en_without_1_4_5.conllulex')
-p_en = dict()
-p = None
-with open(fp) as f:
-    for line in f.readlines():
-        line = line.strip()
-        if line.startswith("#") or len(line) == 0:
-            if line.startswith("# text"):
-                sent = line.split('=')[1].strip()
-            continue
-        line = line.split("\t")
-        lexcat = line[-1]
-        lemma = line[2]
-        BIO = lexcat.split('-')[0]
-
-        if lexcat == "_"\
-            or (line[13].split('.')[0] != 'p' and BIO != "I_"):
-                if type(p) == list:  # MWE ended last line
-                    p_en = _add_p(p_en, ' '.join(p), sr, f)
-                p = None
-                continue
-
-        if BIO == "B":  # MWE begins
-            if type(p) == list:  # MWE ended last line
-                p_en = _add_p(p_en, ' '.join(p), sr, f)
-            sr = line[13].split('.')[1]
-            f = line[14].split('.')[1]
-            p = [lemma]
-        
-        elif BIO == "I_" and type(p) == list:  # inside MWE
-            print('shit')
-            p.append(lemma)
-            
-        elif BIO in ["O", "I~"]:  # single word expression or MWE but of different kind (belong *to*)
-            if type(p) == list:  # MWE ended last line
-                p_en = _add_p(p_en, ' '.join(p), sr, f)
-            sr = line[13].split('.')[1]
-            f = line[14].split('.')[1]
-            p = lemma
-            p_en = _add_p(p_en, p, sr, f)
-
-
-# TODO: get J distribution and compare!
-
-data_fp1 = os.path.join("data", "cleaned", "chapters0_3_cleaned.xlsx")
-data_fp2 = os.path.join("data", "cleaned", "chapters4_6_cleaned.xlsx")
-data_fp3 = os.path.join("data", "cleaned", "chapters7_9_cleaned.xlsx")
-data_fp4 = os.path.join("data", "cleaned", "chapters10_12_cleaned.xlsx")
-df1 = pd.read_excel(data_fp1)
-df2 = pd.read_excel(data_fp2)
-df3 = pd.read_excel(data_fp3)
-df4 = pd.read_excel(data_fp4)
-
-df = pd.concat([df1, df2, df3, df4], ignore_index=True)
-
-
-p_jp = dict()
-sr_f_list = []
-sr_list = []
-f_list = []
-num_tok = 0
-num_sents = 0
-num_chaps = 0
-for i in range(len(df)):
-    first_col = df.iloc[i, 0]
-    if type(first_col) == str:
-        if first_col.startswith("# new"):
-            num_chaps += 1
-        elif first_col.startswith("#"):
-            num_sents += 1
-#    print(i)
-    tok = df.loc[i, "Token"]
-    mwe = df.loc[i, "Token-MWE"]
-
-    if type(tok) == str:
-        num_tok += 1
-    if type(tok) == str and type(df.loc[i, "SR"]) == str:
-#        tok = df.loc[i, "Token"] + ' (' + df.loc[i, "Romanized"] + ')'
-        rom = ''.join([converted['passport'] for converted in kks.convert(tok)])
-        if type(mwe) == str:
-            rom = ''.join([converted['passport'] for converted in kks.convert(mwe)])
-            print(rom)
-        sr = capitalize_ss[df.loc[i, "SR"].lower()]
-        f = capitalize_ss[df.loc[i, "F"].lower()]
-        if type(sr) == str and type(f) == str:
-            sr_f = "_".join([sr, f])
-            sr_f_list.append(sr_f)
-            sr_list.append(sr)
-            f_list.append(f)
-            if rom not in p_jp:
-                p_jp[rom] = {'sr': {ss: 0 for ss in sorted(list(capitalize_ss.values()))},
-                             'f': {ss: 0 for ss in sorted(list(capitalize_ss.values()))},
-                             'sr_f': {ss: 0 for ss in sorted(list(capitalize_ss.values()))}}
-            if sr not in p_jp[rom]['sr']:
-                p_jp[rom]['sr'][sr] = 0
-            if f not in p_jp[rom]['f']:
-                p_jp[rom]['f'][f] = 0
-            if sr_f not in p_jp[rom]['sr_f']:
-                p_jp[rom]['sr_f'][sr_f] = 0
-            p_jp[rom]['sr'][sr] += 1
-            p_jp[rom]['f'][f] += 1
-            p_jp[rom]['sr_f'][sr_f] += 1
-
+JPN_MWE = {'ni totsu te': 'nitotte', 'to ha': 'toha', 'ni tsui te': 'nitsuite'}
 # convert both distributions to relative frequencies
-p_jp_rel = dict()
-for p in p_jp:
-    p_jp_rel[p] = dict()
-    p_jp_rel[p]['sr'] = [(sr, freq/sum(p_jp[p]['sr'].values()))\
-                         for sr, freq in p_jp[p]['sr'].items()]
-    p_jp_rel[p]['f'] = [(f, freq/sum(p_jp[p]['f'].values()))\
-                        for f, freq in p_jp[p]['f'].items()]
-
-p_en_rel = dict()
-for p in p_en:
-    p_en_rel[p] = dict()
-    p_en_rel[p]['sr'] = [(sr, freq/sum(p_en[p]['sr'].values()))\
-                         for sr, freq in p_en[p]['sr'].items()]
-    p_en_rel[p]['f'] = [(f, freq/sum(p_en[p]['f'].values()))\
-                        for f, freq in p_en[p]['f'].items()]
+def abs2rel(p_dict):
+    p_dict_rel = dict()
+    for p in p_dict:
+        p_dict_rel[p] = dict()
+        p_dict_rel[p]['sr'] = [(sr, freq/sum(p_dict[p]['sr'].values()))\
+                             for sr, freq in p_dict[p]['sr'].items()]
+        p_dict_rel[p]['f'] = [(f, freq/sum(p_dict[p]['f'].values()))\
+                            for f, freq in p_dict[p]['f'].items()]
+    return p_dict_rel
 
 # compute JS divergence
-
 def measure_divergence(ss_dist1, ss_dist2):
     values1 = [item[1] for item in ss_dist1]
     keys1 = [item[0] for item in ss_dist1]
@@ -183,9 +37,6 @@ def measure_divergence(ss_dist1, ss_dist2):
     keys2 = [item[0] for item in ss_dist2]
     assert keys1 == keys2  # ensuring that the order is the same
     return jensenshannon(values1, values2)
-
-measure_divergence(p_en_rel['of']['f'], p_jp_rel['no']['f'])
-measure_divergence(p_jp_rel['no']['f'], p_en_rel['of']['f'])
 
 # compute within-lang divergence
 
@@ -222,7 +73,7 @@ def create_ss_ranking(all_combo, ss_dict1, ss_dict2, sr=False):
         ranking.append([combo, divergence])
     return sorted(ranking, key=lambda x: x[1])
 
-def create_embed_ranking(all_combo, p2ss2emb1, p2ss2emb2=None,
+def create_cwe_ranking(all_combo, p2ss2emb1, p2ss2emb2=None,
                          sr=False, layer=12):
     srf = 'f'
     if sr:
@@ -263,197 +114,162 @@ def pearson_ss_embed(ss_divergence, embed_distance):
     return pearsonr([item[1] for item in ss_divergence],
                     [item[1] for item in embed_distance])
 
-"""English"""
-## compute ss distribution divergence
-all_combo_en = create_all_combo(list(p_en.keys()))
-ranking_en = create_ss_ranking(all_combo_en,
-                               p_en_rel, p_en_rel, sr=True)
 
-# compute embedding distance in monolingual BERT
-with open(os.path.join('data', 'p2ss2emb_en_mbert.json')) as f:
-    p2ss2emb_en = json.loads(f.read())
-
-# calculate embedding distance
-ranking_embed_en = create_embed_ranking(all_combo_en, p2ss2emb_en,
-                                        sr=True, layer=12)
-
-# pearson correlation between ss divergence and embedding distance
-pearson_ss_embed(ranking_en, ranking_embed_en)
-
-# by layers
-pearson_layer_en = []
-for i in range(1,13):
-    ranking_embed_en = create_embed_ranking(all_combo_en, p2ss2emb_en,
-                                            sr=True, layer=i)
-    pearson_layer_en.append(
-        [i, pearson_ss_embed(ranking_en, ranking_embed_en)]
+def get_pearson_by_layer(all_combo, ranking_ss, p2ss2emb1, p2ss2emb2=None):
+    pearson_layer = []
+    for i in range(1, 13):
+        ranking_cwe = create_cwe_ranking(all_combo, p2ss2emb1, p2ss2emb2,
+                                         sr=True, layer=i)
+        pearson_layer.append(
+            [i, pearson_ss_embed(ranking_ss, ranking_cwe)]
         )
+    return pearson_layer
 
+def kana2roman(p2ss2emb_jpn, kks):
+    ps = list(p2ss2emb_jpn['1'].keys())
+    kana2roman_dict = {p: ''.join([item['passport'] for item in kks.convert(re.sub(' ', '', p))])
+                for p in ps}
+    for layer in p2ss2emb_jpn:
+        for kana in ps:
+            p2ss2emb_jpn[layer][kana2roman_dict[kana]] = p2ss2emb_jpn[layer][kana]
+            del p2ss2emb_jpn[layer][kana]
+    return p2ss2emb_jpn
 
+def ranking2text(ranking_ss, ranking_cwe, k=15):
+    ranking_ss.sort(key = lambda x:x[1])
+    ranking_cwe.sort(key = lambda x:x[1], reverse=True)
 
-"""Japanese"""
-## compute ss distribution divergence
-all_combo_jp = create_all_combo(list(p_jp.keys()))
-ranking_jp = create_ss_ranking(all_combo_jp,
-                               p_jp_rel, p_jp_rel, sr=True)
+    ss_top15 = [['SS', ' <-> '.join(pair), str(round(score, 2))] for pair, score in ranking_ss[:k]]
+    cwe_top15 = [['CWE', ' <-> '.join(pair), str(round(score, 2))] for pair, score in ranking_cwe[:k]]
+    output = ['\t'.join(['Metrics', 'Pair', 'Score'])]
+    for ss in ss_top15:
+        output.append('\t'.join(ss))
+    for cwe in cwe_top15:
+        output.append('\t'.join(cwe))
+    fp = os.path.join(DATA_DIR, 'Table4.txt')
+    text = '\n'.join(output)
+    with open(fp, 'w') as f:
+        f.write(text)
+    print('\n'+'='*100+'\n'+f'Table 4 saved to {fp}!')
 
+def get_figure(pearson_layer_eng,
+               pearson_layer_jpn,
+               pearson_layer_xling):
+    matplotlib.rcParams.update({
+        'font.family': 'sans-serif',
+        'pgf.rcfonts': False,
+        'font.size': 9,
+    })
 
-## compute embedding distance in monolingual BERT
-with open(os.path.join('data', 'p2ss2emb_jp_mbert.json')) as f:
-    p2ss2emb_jp = json.loads(f.read())
+    plt.figure(figsize=(3,1.5))
+    plt.bar([pair[0]-0.3 for pair in pearson_layer_eng],
+            [np.abs(pair[1][0]) for pair in pearson_layer_eng],
+            width=0.3, color = 'darkblue',
+            label='en')
+    plt.bar([pair[0] for pair in pearson_layer_jpn],
+            [np.abs(pair[1][0]) for pair in pearson_layer_jpn],
+            width=0.3, color = 'forestgreen',
+            label='jp')
+    plt.bar([pair[0]+0.3 for pair in pearson_layer_xling],
+            [np.abs(pair[1][0]) for pair in pearson_layer_xling],
+            width=0.3, color = 'gold',
+            label='en-jp')
+    plt.xticks([pair[0] for pair in pearson_layer_eng])
+    plt.yticks([float(item)/100 for item in range(0,45,10)])
+    plt.ylabel("|Pearson's r|")
+    plt.xlabel("Layer")
+    plt.legend(loc='upper left', fontsize='xx-small')
+    fp = os.path.join(DATA_DIR, "Figure3.png")
+    plt.savefig(fp, format='png', bbox_inches='tight')
+    print('\n'+'='*100+'\n'+f'Figure 3 saved to {fp}!')
 
-## needs some postprocessing to change from kana to romanized for J
-ps = list(p2ss2emb_jp['1'].keys())
-kana2rom = {p: ''.join([item['passport'] for item in kks.convert(re.sub(' ', '', p))])
-            for p in ps}
-for layer in p2ss2emb_jp:
-    for kana in ps:
-        p2ss2emb_jp[layer][kana2rom[kana]] = p2ss2emb_jp[layer][kana]
-        del p2ss2emb_jp[layer][kana]
+def main():
 
-## calculate embedding distance
-ranking_embed_jp = create_embed_ranking(all_combo_jp, p2ss2emb_jp,
-                                        sr=True, layer=12)
+    # ENGLISH
 
-# pearson correlation between ss divergence and embedding distance
-pearson_ss_embed(ranking_jp, ranking_embed_jp)
+    # load the pre-computed embedding distance
+    fp = os.path.join(EMBEDDINGS_DIR, 'p2ss2emb_eng_mbert.json')
+    if not os.path.exists(fp):
+        raise IOError('\n'+'English pre-computed embeddings not found. Please first run `embedding_distance.py`.')
+    print('\n'+'='*100+'\n'+'Loading the pre-computed CWEs...')
+    with open(fp) as f:
+        p2ss2emb_eng = json.loads(f.read())
 
-# by layer
-pearson_layer_jp = []
-for i in range(1,13):
-    ranking_embed_jp = create_embed_ranking(all_combo_jp, p2ss2emb_jp,
-                                            sr=True, layer=i)
-    pearson_layer_jp.append(
-        [i, pearson_ss_embed(ranking_jp, ranking_embed_jp)]
-        )
+    print('\n'+'='*100+'\n'+'Loading English Little Prince Corpus...')
+    fp = os.path.join(DATA_DIR, 'prince_en_without_1_4_5.conllulex')
+    if not os.path.exists(fp):
+        raise IOError('\n'+'English Little Prince not found. Please download from:'+'\n'+\
+                      'https://github.com/nert-nlp/English-Little-Prince-SNACS/blob/master/prince_en_without_1_4_5.conllulex'
+                      )
+    p_eng, _ = get_target_list(fp, 'eng', ensure=True)
+    p_eng_rel = abs2rel(p_eng)
+    all_combo_eng = create_all_combo(p_eng.keys())
+    # compute ss distribution divergence
+    print('\n'+'='*100+'\n'+'Computing similarities...')
+    ranking_ss_eng = create_ss_ranking(all_combo_eng, p_eng_rel, p_eng_rel, sr=True)
+    ranking_cwe_eng = create_cwe_ranking(all_combo_eng, p2ss2emb_eng, sr=True, layer=12)
+    # pearson correlation between ss divergence and embedding distance
+    # TODO pearson_ss_embed(ranking_eng, ranking_embed_eng)
+    pearson_by_layer_eng = get_pearson_by_layer(all_combo_eng, ranking_ss_eng, p2ss2emb_eng)
 
+    # JAPANESE
 
-"""CROSS LINGUAL"""
-## compute ss distribution divergence
-all_combo_en_jp = create_all_combo(list(p_en.keys()), list(p_jp.keys()))
-ranking_en_jp = create_ss_ranking(all_combo_en_jp,
-                                  p_en_rel, p_jp_rel, sr=True)
+    # load the pre-computed embedding distance
+    print('\n'+'='*100+'\n'+'Loading the pre-computed CWEs...')
+    fp = os.path.join(EMBEDDINGS_DIR, 'p2ss2emb_jpn_mbert.json')
+    if not os.path.exists(fp):
+        raise IOError('\n'+'Japanese pre-computed embeddings not found. Please first run `embedding_distance.py`.')
+    with open(fp) as f:
+        p2ss2emb_jpn = json.loads(f.read())
+    # needs some postprocessing to change from kana to romanized for J
+    p2ss2emb_jpn = kana2roman(p2ss2emb_jpn, kks)
 
+    print('\n'+'='*100+'\n'+'Loading Japanese Little Prince Corpus...')
+    fp = os.path.join(DATA_DIR, 'lpp_jp.conllulex')
+    if not os.path.exists(fp):
+        raise IOError('\n'+'Japanese Little Prince not found. Please download from:'+'\n'+\
+                      'https://github.com/t-aoyam/japanese-snacs/blob/main/data/lpp_jp.conllulex'
+                      )
+    p_jpn, _ = get_target_list(fp, 'eng', ensure=False)  # 'eng' because of .conllulex column,
+                                                         # no ensuring because kana != roman
+    for p in p_jpn:
+        if p in JPN_MWE:
+            p_jpn[JPN_MWE[p]] = p_jpn[p]
+            del p_jpn[p]
 
-## compute embedding distance in monolingual BERT
-with open(os.path.join('data', 'p2ss2emb_en_mbert.json')) as f:
-    p2ss2emb_en = json.loads(f.read())
-with open(os.path.join('data', 'p2ss2emb_jp_mbert.json')) as f:
-    p2ss2emb_jp = json.loads(f.read())
+    p_jpn_rel = abs2rel(p_jpn)
 
-## needs some postprocessing to change from kana to romanized for J
-ps = list(p2ss2emb_jp['1'].keys())
-kana2rom = {p: ''.join([item['passport'] for item in kks.convert(re.sub(' ', '', p))])
-            for p in ps}
-for layer in p2ss2emb_jp:
-    for kana in ps:
-        p2ss2emb_jp[layer][kana2rom[kana]] = p2ss2emb_jp[layer][kana]
-        del p2ss2emb_jp[layer][kana]
+    all_combo_jpn = create_all_combo(p_jpn.keys())
 
-## calculate embedding distance
-ranking_embed_en_jp = create_embed_ranking(all_combo_en_jp,
-                                        p2ss2emb_en,
-                                        p2ss2emb_jp,
-                                        sr=True, layer=3)
-ranking_embed_en_jp.sort(key = lambda x:x[1])
-ranking_en_jp.sort(key = lambda x:x[1])
-# pearson correlation between ss divergence and embedding distance
-pearson_ss_embed(ranking_en_jp, ranking_embed_en_jp)
+    # compute ss distribution divergence
+    print('\n'+'='*100+'\n'+'Computing similarities...')
+    ranking_ss_jpn = create_ss_ranking(all_combo_jpn, p_jpn_rel, p_jpn_rel, sr=True)
+    ranking_cwe_jpn = create_cwe_ranking(all_combo_jpn, p2ss2emb_jpn, sr=True, layer=12)
+    # pearson correlation between ss divergence and embedding distance
+    # TODO pearson_ss_embed(ranking_jpn, ranking_embed_jpn)
+    # by layer
+    pearson_by_layer_jpn = get_pearson_by_layer(all_combo_jpn, ranking_ss_jpn, p2ss2emb_jpn)
 
-pearson_layer_cross = []
-for i in range(1,13):
-    ranking_embed_en_jp = create_embed_ranking(all_combo_en_jp,
-                                            p2ss2emb_en,
-                                            p2ss2emb_jp,
-                                            sr=True, layer=i)
-    pearson_layer_cross.append(
-        [i, pearson_ss_embed(ranking_en_jp, ranking_embed_en_jp)]
-        )
+    """CROSS LINGUAL"""
+    all_combo_xling = create_all_combo(list(p_eng.keys()), list(p_jpn.keys()))
+    # compute ss distribution divergence
+    print('\n'+'='*100+'\n'+'Computing cross-lingual similarities...')
+    ranking_ss_xling = create_ss_ranking(all_combo_xling,
+                                      p_eng_rel, p_jpn_rel, sr=True)
 
-#scratch apd
-ranking_en_jp.sort(key = lambda x:x[1])
-ranking_embed_en_jp.sort(key = lambda x:x[1], reverse=True)
+    # calculate embedding distance
+    ranking_cwe_xling = create_cwe_ranking(all_combo_xling,
+                                            p2ss2emb_eng,
+                                            p2ss2emb_jpn,
+                                            sr=True, layer=3)  # TODO make sure the layer
+    ranking_cwe_xling.sort(key = lambda x:x[1])
+    ranking_ss_xling.sort(key = lambda x:x[1])
+    # pearson correlation between ss divergence and embedding distance
+    pearson_ss_embed(ranking_ss_xling, ranking_cwe_xling)
+    pearson_by_layer_xling = get_pearson_by_layer(all_combo_xling, ranking_ss_xling,
+                                                  p2ss2emb_eng, p2ss2emb_jpn)
+    get_figure(pearson_by_layer_eng, pearson_by_layer_jpn, pearson_by_layer_xling)
+    ranking2text(ranking_ss_xling, ranking_cwe_xling)
 
-ss_top15 = [[' | '.join(pair), round(score, 2)] for pair, score in ranking_en_jp[:15]]
-embed_top15 = [[' | '.join(pair), round(score, 2)] for pair, score in ranking_embed_en_jp[:15]]
-
-top15 = pd.DataFrame(np.array(ss_top15+embed_top15).reshape(10,6))
-
-top15 = pd.DataFrame([', '.join(ss_top15), ', '.join(embed_top15)],
-                     index=['SS-based', "CWE-based"],
-                     columns=['Top 15']
-                     )
-top15.style.to_latex("top15.tex", encoding="UTF-8")
-
-#scratch pad
-# visualization
-
-matplotlib.use("pgf")
-matplotlib.rcParams.update({
-    "pgf.texsystem": "xelatex",
-    'font.family': 'sans-serif',
-    'text.usetex': True,
-    'pgf.rcfonts': False,
-    'font.size': 9,
-})
-
-plt.figure(figsize=(3,1.5))
-plt.bar([pair[0]-0.3 for pair in pearson_layer_en],
-        [np.abs(pair[1][0]) for pair in pearson_layer_en],
-        width=0.3, color = 'darkblue',
-        label='en')
-plt.bar([pair[0] for pair in pearson_layer_jp],
-        [np.abs(pair[1][0]) for pair in pearson_layer_jp],
-        width=0.3, color = 'forestgreen',
-        label='jp')
-plt.bar([pair[0]+0.3 for pair in pearson_layer_cross],
-        [np.abs(pair[1][0]) for pair in pearson_layer_cross],
-        width=0.3, color = 'gold',
-        label='en-jp')
-plt.xticks([pair[0] for pair in pearson_layer_en])
-plt.yticks([float(item)/100 for item in range(0,45,10)])
-plt.ylabel("|Pearson's r|")
-plt.xlabel("Layer")
-plt.legend(loc='upper left', fontsize='xx-small')
-plt.savefig("Pearson.pgf",format='pgf', bbox_inches='tight')
-
-
-
-# TODO: process EFCAMDAT and find error cases
-"""
-efcamdat_fp = os.path.join("..", "..", "Downloads", "efcamdat",
-                           "EFCAMDAT_Database.xml")
-efcamdat_nobr_fp = os.path.join("..", "..", "Downloads", "efcamdat",
-                           "EFCAMDAT_Database_nobr.xml")
-# fix unclosed <br> tag by ignoring all of them
-with open(efcamdat_fp) as f:
-    text = f.read()
-    text = re.sub(r"<br>|</br>|<code>|</code>", "", text)
-with open(efcamdat_nobr_fp, 'w') as f:
-    f.write(text)
-tree = ET.parse(efcamdat_nobr_fp)
-root = tree.getroot()
-essays = root.find('writings')
-jpn = essays.findall(".//*[@nationality='jp']/..")
-corrections = essays.findall(".//*[@nationality='jp']/..//*[symbol='PR']/..")
-corrections[0].attrib['correct']
-
-for cor in corrections:
-    print("="*10)
-    print("correction from:")
-    if cor.find('selection') is not None:
-        print(cor.find('selection').text)
-    print("to:")
-    if cor.find('tag').find('correct') is not None:
-        print(cor.find('tag').find('correct').text)
-
-corrections[3].find('tag').find('correct').text
-corrections[3].find('selection').find('correct').text
-
-print(corrections[1])
-for essay in jpn:
-    essay.find(".//[symbol='PR']/../..").text
-prep_errors = jpn.findall(".//symbol")
-#jpn = essays.findall("./writing/learner[@nationality='jp']")
-jpn[8].find(".//*[symbol='PR']/../..").text
-"""
+if __name__ == "__main__":
+    main()

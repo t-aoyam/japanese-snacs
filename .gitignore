@@ -2,7 +2,9 @@
 data/GSD/
 data/annotated/
 data/prince_en_without_1_4_5.conllulex
+data/embeddings/
 
 # others
 __pycache__/
 .idea/
+code/other/
