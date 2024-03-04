@@ -1,13 +1,13 @@
-
 import conllu
 import re
 from collections import defaultdict
 import pandas as pd
 import numpy as np
+import os
 
-file_dev = "ja_gsd-ud-dev.conllu"
-file_test = "ja_gsd-ud-test.conllu"
-file_train = "ja_gsd-ud-train.conllu"
+file_dev = os.path.join("data", "GSD", "ja_gsd-ud-dev.conllu")
+file_test = os.path.join("data", "GSD", "ja_gsd-ud-test.conllu")
+file_train = os.path.join("data", "GSD", "ja_gsd-ud-train.conllu")
 
 with open(file_dev, encoding='utf-8') as f:
     dev = f.read()
@@ -52,14 +52,28 @@ for xpos in xpos2upos:
         lemmas = []
 #        print(xpos2upos[xpos][upos])
         for lemma in xpos2upos[xpos][upos]:
-            lemmas.append(f"{lemma} ({xpos2upos[xpos][upos][lemma]})")
-        lemmas_joined = ", ".join(lemmas)
-        row.append(lemmas_joined)
+            lemmas.append([lemma, xpos2upos[xpos][upos][lemma]])
+        lemmas.sort(key=lambda x:x[1], reverse=True)
+        row.append(lemmas)
         table.append(row)
 
-df = pd.DataFrame(table, index = [row[0] for row in table], columns=['XPOS', 'UPOS', 'lemmas'])
-df2 = df.loc[:, ['UPOS', 'lemmas']]
-df2.style.to_latex("table1.tex", encoding="UTF-8")
+#lemmas_joined = ", ".join([f"{lemma[0]} ({lemma[1]})" for lemma in lemmas])
+full = [[item[0], item[1], ', '.join([f"{joshi[0]} ({joshi[1]})" for joshi in item[2]])] for item in table]
+top5 = [[item[0], item[1], ', '.join([f"{joshi[0]} ({joshi[1]})" for joshi in item[2][:5]])] for item in table]
+full = pd.DataFrame(table,
+                    index = [row[0] for row in table],
+                    columns=['XPOS', 'UPOS', 'lemmas']
+                    )
+top5 = pd.DataFrame(top5,
+    index = [row[0] for row in table],
+    columns=['XPOS', 'UPOS', 'lemmas']
+    )
+full2 = full.loc[:, ['UPOS', 'lemmas']]
+top5_2 = top5.loc[:, ['UPOS', 'lemmas']]
+full2.style.to_latex("xpos2upos-appendix.tex", encoding="UTF-8")
+top5_2.style.to_latex("xpos2upos.tex", encoding="UTF-8")
+
+
 ''.join([item['form'] for item in jud_list[0]])
 
 

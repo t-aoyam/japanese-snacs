@@ -1,0 +1,8 @@
+# data
+data/GSD/
+data/annotated/
+data/prince_en_without_1_4_5.conllulex
+
+# others
+__pycache__/
+.ideas/
