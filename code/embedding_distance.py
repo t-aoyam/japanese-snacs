@@ -160,7 +160,7 @@ def main():
     fp = os.path.join(DATA_DIR, 'lpp_jp.conllulex')
     if not os.path.exists(fp):
         raise IOError('\n'+'Japanese Little Prince not found. Please download from:'+'\n'+\
-                      'https://github.com/nert-nlp/English-Little-Prince-SNACS/blob/master/prince_en_without_1_4_5.conllulex'
+                      'https://github.com/t-aoyam/japanese-snacs/blob/main/data/lpp_jp.conllulex'
                       )
     print('\n'+'='*100+'\n'+f'Getting CWEs for all prepositions using {model_name}...')
     feed_LM(fp, model, tokenizer, 'jpn', True)
