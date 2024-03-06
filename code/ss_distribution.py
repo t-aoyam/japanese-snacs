@@ -261,7 +261,7 @@ def main():
     ranking_cwe_xling = create_cwe_ranking(all_combo_xling,
                                             p2ss2emb_eng,
                                             p2ss2emb_jpn,
-                                            sr=True, layer=3)  # TODO make sure the layer
+                                            sr=True, layer=12)
     ranking_cwe_xling.sort(key = lambda x:x[1])
     ranking_ss_xling.sort(key = lambda x:x[1])
     # pearson correlation between ss divergence and embedding distance

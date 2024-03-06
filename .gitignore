@@ -7,4 +7,4 @@ data/embeddings/
 # others
 __pycache__/
 .idea/
-code/other/
+other/

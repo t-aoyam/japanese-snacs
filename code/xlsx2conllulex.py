@@ -2,17 +2,23 @@ import os
 import pandas as pd
 import pykakasi
 
-# get all the spreadsheets into one big DataFrame
-data_fps = os.listdir(os.path.join('data', 'cleaned'))
-data_fps.sort(key = lambda x: int(x.split('_')[1]))
-df = pd.concat([pd.read_excel(os.path.join('data', 'cleaned', data_fp)) for data_fp in data_fps],
-               ignore_index=True)
+DATA_DIR = os.path.join('..', 'data')
+RESOURCES_DIR = os.path.join(DATA_DIR, 'resources')
+CLEAN_DIR = os.path.join(DATA_DIR, 'cleaned')
 
-# putting SS into a correct capitalization
-capitalize_ss_fp = os.path.join("data", "supersenses_capitalization.tab")
+# SS capitalization function
+capitalize_ss_fp = os.path.join(RESOURCES_DIR, "supersenses_capitalization.tab")
 with open(capitalize_ss_fp) as f:
     capitalize_ss = {lower:cap for lower, cap in [item.strip().split('\t') for item in f.readlines()]}
+
 kks = pykakasi.kakasi()
+
+def xlsx2df(clean_dir):
+    data_fps = os.listdir(clean_dir)
+    data_fps.sort(key = lambda x: int(x.split('_')[1]))
+    df = pd.concat([pd.read_excel(os.path.join(CLEAN_DIR, data_fp)) for data_fp in data_fps],
+                   ignore_index=True)
+    return df
 
 def get_chapter_sent_tok(df):
     chapter_id = -1  # chapter ID start from 0 (foreword)
@@ -75,8 +81,16 @@ def dct2conllulex(dct):
             for tid in dct[cid][sid]['toks']:
                 conllulex.append('\t'.join([str(col) for col in dct[cid][sid]['toks'][tid]]))
     return conllulex
-chapters = get_chapter_sent_tok(df)
-conllulex = dct2conllulex(chapters)
-with open(os.path.join('data', 'lpp_jp.conllulex'),
-          'w', newline='\n') as f:
-    f.write('\n'.join(conllulex))
+
+def main():
+    # get all the spreadsheets into one big DataFrame
+    df = xlsx2df(CLEAN_DIR)
+    chapters = get_chapter_sent_tok(df)
+    conllulex = dct2conllulex(chapters)
+    with open(os.path.join(DATA_DIR, 'lpp_jp.conllulex'),
+              'w', newline='\n') as f:
+        f.write('\n'.join(conllulex))
+    print("\n"+"Data successfully converted from .xlsx to .conllulex!")
+
+if __name__ == "__main__":
+    main()
