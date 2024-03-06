@@ -21,7 +21,12 @@ If you just need a clean, adjudicated dataset for J-SNACS, please go grab it fro
     └── ss_distribution.py
 
 ## Environment
-Please use `pip install -r requirements.txt` to create an environment. `Python 3.7` was used to run all the codes in this repo.
+Please use `pip install -r requirements.txt` to install the necessary packages. `Python 3.7` was used to run all the codes in this repo.
+```console
+foo@bar:./japanese-snacs$ conda create -n jsnacs python=3.7
+foo@bar:./japanese-snacs$ conda activate jsnacs
+(jsnacs) foo@bar:./japanese-snacs$ pip install -r requirements.txt
+```
 
 ## Obtaining the results from the paper
 The cleaned-up version of J-SNACS data is already available under `data/lpp_jp.conllulex`; however, to run the codes used in the paper, you will need to download the English Little Prince Corpus from https://github.com/nert-nlp/English-Little-Prince-SNACS/blob/master/prince_en_without_1_4_5.conllulex.
@@ -49,23 +54,7 @@ Finally, you can obtain the `.conllulex` by running the following command.
 ## Citation
 If you use the data and/or the codes in this repo, please remember to cite our paper!
 ```
-@inproceedings{aoyama-etal-2024-jsnacs,
-    title = "{AMALGUM} {--} A Free, Balanced, Multilayer {E}nglish Web Corpus",
-    author = "Aoyama, Tatsuya  and
-      Taguchi, Chihiro  and
-      Schneider, Nathan",
-    booktitle = "Proceedings of The 14th Language Resources and Evaluation Conference",
-    month = may,
-    year = "2024",
-    address = "Turin, Italy",
-    publisher = "European Language Resources Association",
-    url = "https://www.aclweb.org/anthology/2024.lrec",
-    pages = "???-???",
-    abstract = "Many languages use adpositions (prepositions or postpositions) to mark a variety of semantic relations, with different languages exhibiting both commonalities and idiosyncrasies in the relations grouped under the same lexeme. We present the first Japanese extension of the SNACS framework (Schneider et al., 2018), which has served as the basis for annotating adpositions in corpora from several languages. After establishing which of the set of particles (joshi) in Japanese qualify as adpositional, we annotate 10 chapters (≈10k tokens) of the Japanese translation of Le Petit Prince (The Little Prince), achieving high inter-annotator agreement. We find that, while a majority of the particles and their uses are captured by the existing and extended SNACS annotation guidelines from the previous work, some unique cases were observed. We also conduct experiments investigating the cross-lingual similarity
-of adposition and case marker supersenses, showing that the language-agnostic SNACS framework captures similarities not clearly observed in multilingual embedding space.",
-    language = "English",
-    ISBN = "?",
-}
+@inproceedings{}
 ```
 
 ## Licensing
