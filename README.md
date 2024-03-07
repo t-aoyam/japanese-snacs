@@ -26,20 +26,20 @@ If you just need a clean, adjudicated dataset for J-SNACS, please go grab it fro
 ## Environment
 Please use `pip install -r requirements.txt` to install the required packages. `Python 3.7` was used to run all the codes in this repo.
 ```console
-foo@bar:./japanese-snacs$ conda create -n jsnacs python=3.7
-foo@bar:./japanese-snacs$ conda activate jsnacs
-(jsnacs) foo@bar:./japanese-snacs$ pip install -r requirements.txt
+japanese-snacs$ conda create -n jsnacs python=3.7
+japanese-snacs$ conda activate jsnacs
+(jsnacs) japanese-snacs$ pip install -r requirements.txt
 ```
 
 ## Obtaining the results from the paper
 The cleaned-up version of J-SNACS data is already available under `data/lpp_jp.conllulex`; however, to run the codes used in the paper, you will need to download the English Little Prince Corpus from https://github.com/nert-nlp/English-Little-Prince-SNACS/blob/master/prince_en_without_1_4_5.conllulex.
 To replicate the results from our paper, particularly Figure 3 and Table 4, please first obtain the relevant CWEs by running the following command.
 ```console
-(jsnacs) foo@bar:./japanese-snacs/code$ python embedding_distance.py
+(jsnacs) japanese-snacs/code$ python embedding_distance.py
 ```
 `.json` files should be saved under `data/embeddings/` directory. Then run the following command to obtain `Figure3.png` and `Table4.txt`.
 ```console
-(jsnacs) foo@bar:./japanese-snacs/code$ python ss_distribution.py
+(jsnacs) japanese-snacs/code$ python ss_distribution.py
 ```
 If everything runs successfully, the resulting figure should look like this:
 
@@ -48,12 +48,12 @@ If everything runs successfully, the resulting figure should look like this:
 ## Annotating the data and converting the annotated `.xlsx` files to `.conllulex`
 The raw version (without any annotation) of the data can be obtained by scraping the source HTML data.
 ```console
-(jsnacs) foo@bar:./japanese-snacs/code$ python extract_lpp_html.py
+(jsnacs) japanese-snacs/code$ python extract_lpp_html.py
 ```
 The resulting `.xlsx` files are designed to make the annotation process easier - once you annotate (and preferably adjudicate) the data, you can place the annotated data under `data/cleaned/` (see files under `data/cleaned/` to make sure your files are exactly in the same format).
 Finally, you can obtain the `.conllulex` by running the following command.
 ```console
-(jsnacs) foo@bar:./japanese-snacs/code$ python xlsx2conllulex.py
+(jsnacs) japanese-snacs/code$ python xlsx2conllulex.py
 ```
 
 ## Citation
