@@ -1,6 +1,9 @@
 # Repository for J-SNACS
 
-This is a repo containing a dataset of Japanese Little Prince Corpus (星の王子さま) manually annotated for adpositions and case markers, following the SNACS guideline. The dataset and the experiments are described in our paper
+This is a repo for the code and data used in our paper "J-SNACS: Adposition and Case Supersenses for Japanese Joshi" to be presented at LREC-COLING 2024.
+`./data/` contains Japanese Little Prince (星の王子さま) Corpus manually annotated for adpositions and case markers, following the SNACS guideline.
+`./code/` contains the python scripts that replicate the experimental results in the paper.
+
 ## TL;DR
 
 If you just need a clean, adjudicated dataset for J-SNACS, please go grab it from `data/lpp_jp.conllulex`!
@@ -21,7 +24,7 @@ If you just need a clean, adjudicated dataset for J-SNACS, please go grab it fro
     └── ss_distribution.py
 
 ## Environment
-Please use `pip install -r requirements.txt` to install the necessary packages. `Python 3.7` was used to run all the codes in this repo.
+Please use `pip install -r requirements.txt` to install the required packages. `Python 3.7` was used to run all the codes in this repo.
 ```console
 foo@bar:./japanese-snacs$ conda create -n jsnacs python=3.7
 foo@bar:./japanese-snacs$ conda activate jsnacs
@@ -38,6 +41,8 @@ To replicate the results from our paper, particularly Figure 3 and Table 4, plea
 ```console
 (jsnacs) foo@bar:./japanese-snacs/code$ python ss_distribution.py
 ```
+If everything runs successfully, the resulting figure should look like this:
+
 ![Figure3](https://github.com/t-aoyam/japanese-snacs/assets/57016337/d7db5ac2-c626-43cf-841e-0ef5a3b9450b)
 
 ## Annotating the data and converting the annotated `.xlsx` files to `.conllulex`
