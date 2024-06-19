@@ -59,7 +59,26 @@ Finally, you can obtain the `.conllulex` by running the following command.
 ## Citation
 If you use the data and/or the codes in this repo, please remember to cite our paper!
 ```
-@inproceedings{}
+@inproceedings{aoyama-etal-2024-j-snacs,
+    title = "{J}-{SNACS}: Adposition and Case Supersenses for {J}apanese Joshi",
+    author = "Aoyama, Tatsuya  and
+      Taguchi, Chihiro  and
+      Schneider, Nathan",
+    editor = "Calzolari, Nicoletta  and
+      Kan, Min-Yen  and
+      Hoste, Veronique  and
+      Lenci, Alessandro  and
+      Sakti, Sakriani  and
+      Xue, Nianwen",
+    booktitle = "Proceedings of the 2024 Joint International Conference on Computational Linguistics, Language Resources and Evaluation (LREC-COLING 2024)",
+    month = may,
+    year = "2024",
+    address = "Torino, Italia",
+    publisher = "ELRA and ICCL",
+    url = "https://aclanthology.org/2024.lrec-main.839",
+    pages = "9604--9614",
+    abstract = "Many languages use adpositions (prepositions or postpositions) to mark a variety of semantic relations, with different languages exhibiting both commonalities and idiosyncrasies in the relations grouped under the same lexeme. We present the first Japanese extension of the SNACS framework (Schneider et al., 2018), which has served as the basis for annotating adpositions in corpora from several languages. After establishing which of the set of particles (joshi) in Japanese qualify as case markers and adpositions as defined in SNACS, we annotate 10 chapters ({\mbox{$\approx$}}10k tokens) of the Japanese translation of Le Petit Prince (The Little Prince), achieving high inter-annotator agreement. We find that, while a majority of the particles and their uses are captured by the existing and extended SNACS annotation guidelines from the previous work, some unique cases were observed. We also conduct experiments investigating the cross-lingual similarity of adposition and case marker supersenses, showing that the language-agnostic SNACS framework captures similarities not clearly observed in multilingual embedding space.",
+}
 ```
 
 ## Licensing
